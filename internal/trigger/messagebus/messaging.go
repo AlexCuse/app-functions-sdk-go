@@ -80,6 +80,12 @@ func (trigger *Trigger) Initialize(appWg *sync.WaitGroup, appCtx context.Context
 	go func() {
 		defer appWg.Done()
 
+		outputContentType := clients.ContentTypeJSON
+
+		if ct, found := trigger.Configuration.MessageBus.Optional["ContentType"]; found {
+			outputContentType = ct
+		}
+
 		for receiveMessage {
 			select {
 			case <-appCtx.Done():
@@ -89,7 +95,7 @@ func (trigger *Trigger) Initialize(appWg *sync.WaitGroup, appCtx context.Context
 				logger.Error(fmt.Sprintf("Failed to receive message from bus, %v", msgErr))
 
 			case msgs := <-trigger.topics[0].Messages:
-				go func() {
+				go func(contentType string) {
 					logger.Trace("Received message from bus", "topic", trigger.Configuration.Binding.SubscribeTopic, clients.CorrelationHeader, msgs.CorrelationID)
 
 					edgexContext := &appcontext.Context{
@@ -112,7 +118,7 @@ func (trigger *Trigger) Initialize(appWg *sync.WaitGroup, appCtx context.Context
 						outputEnvelope := types.MessageEnvelope{
 							CorrelationID: edgexContext.CorrelationID,
 							Payload:       edgexContext.OutputData,
-							ContentType:   clients.ContentTypeJSON,
+							ContentType:   contentType,
 						}
 						err := trigger.client.Publish(outputEnvelope, trigger.Configuration.Binding.PublishTopic)
 						if err != nil {
@@ -122,7 +128,7 @@ func (trigger *Trigger) Initialize(appWg *sync.WaitGroup, appCtx context.Context
 
 						logger.Trace("Published message to bus", "topic", trigger.Configuration.Binding.PublishTopic, clients.CorrelationHeader, msgs.CorrelationID)
 					}
-				}()
+				}(outputContentType)
 			case bg := <-background:
 				go func() {
 					err := trigger.client.Publish(bg, trigger.Configuration.Binding.PublishTopic)

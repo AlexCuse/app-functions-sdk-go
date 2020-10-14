@@ -19,6 +19,8 @@ package messagebus
 import (
 	"context"
 	"encoding/json"
+	"github.com/fxamacker/cbor/v2"
+	"github.com/google/uuid"
 	"sync"
 	"testing"
 	"time"
@@ -245,6 +247,103 @@ func TestInitializeAndProcessEventWithOutput(t *testing.T) {
 		CorrelationID: expectedCorrelationID,
 		Payload:       expectedPayload,
 		ContentType:   clients.ContentTypeJSON,
+	}
+
+	assert.False(t, transformWasCalled.Value())
+	err = testClient.Publish(message, "SubscribeTopic")
+	require.NoError(t, err, "Failed to publish message")
+
+	time.Sleep(3 * time.Second)
+	require.True(t, transformWasCalled.Value(), "Transform never called")
+
+	receiveMessage := true
+
+	for receiveMessage {
+		select {
+		case msgErr := <-testMessageErrors:
+			receiveMessage = false
+			assert.Error(t, msgErr)
+		case msgs := <-testTopics[0].Messages:
+			receiveMessage = false
+			assert.Equal(t, "Transformed", string(msgs.Payload))
+
+		}
+	}
+}
+
+func TestInitializeAndProcessCBOREventWithOutput(t *testing.T) {
+
+	config := common.ConfigurationStruct{
+		Binding: common.BindingInfo{
+			Type:           "meSsaGebus",
+			PublishTopic:   "PublishTopic",
+			SubscribeTopic: "SubscribeTopic",
+		},
+		MessageBus: types.MessageBusConfig{
+			Type:     "zero",
+			Optional: map[string]string{"OutputContentType": clients.ContentTypeCBOR},
+			PublishHost: types.HostInfo{
+				Host:     "*",
+				Port:     5594,
+				Protocol: "tcp",
+			},
+			SubscribeHost: types.HostInfo{
+				Host:     "localhost",
+				Port:     5592,
+				Protocol: "tcp",
+			},
+		},
+	}
+
+	expectedCorrelationID := "123"
+
+	expectedEvent := models.Event{
+		ID: uuid.New().String(),
+	}
+
+	expectedPayload, _ := cbor.Marshal(expectedEvent)
+
+	transformWasCalled := common.AtomicBool{}
+
+	transform1 := func(edgexcontext *appcontext.Context, params ...interface{}) (bool, interface{}) {
+		transformWasCalled.Set(true)
+		assert.Equal(t, expectedEvent, params[0])
+		edgexcontext.Complete([]byte("Transformed")) //transformed message published to message bus
+		return false, nil
+	}
+
+	runtime := &runtime.GolangRuntime{}
+	runtime.Initialize(nil, nil)
+	runtime.SetTransforms([]appcontext.AppFunction{transform1})
+	trigger := Trigger{Configuration: &config, Runtime: runtime, EdgeXClients: common.EdgeXClients{LoggingClient: logClient}}
+
+	testClientConfig := types.MessageBusConfig{
+		SubscribeHost: types.HostInfo{
+			Host:     "localhost",
+			Port:     5594,
+			Protocol: "tcp",
+		},
+		PublishHost: types.HostInfo{
+			Host:     "*",
+			Port:     5592,
+			Protocol: "tcp",
+		},
+		Type: "zero",
+	}
+	testClient, err := messaging.NewMessageClient(testClientConfig) //new client to publish & subscribe
+	require.NoError(t, err, "Failed to create test client")
+
+	testTopics := []types.TopicChannel{{Topic: trigger.Configuration.Binding.PublishTopic, Messages: make(chan types.MessageEnvelope)}}
+	testMessageErrors := make(chan error)
+
+	testClient.Subscribe(testTopics, testMessageErrors) //subscribe in order to receive transformed output to the bus
+
+	trigger.Initialize(&sync.WaitGroup{}, context.Background(), nil)
+
+	message := types.MessageEnvelope{
+		CorrelationID: expectedCorrelationID,
+		Payload:       expectedPayload,
+		ContentType:   clients.ContentTypeCBOR,
 	}
 
 	assert.False(t, transformWasCalled.Value())
