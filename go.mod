@@ -15,11 +15,10 @@ require (
 	github.com/edgexfoundry/go-mod-secrets v0.0.23
 	github.com/fxamacker/cbor/v2 v2.2.0
 	github.com/gomodule/redigo v2.0.0+incompatible
-	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.8.0
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/tidwall/pretty v1.0.1 // indirect
-	go.mongodb.org/mongo-driver v1.1.1
+	go.mongodb.org/mongo-driver v1.4.2
 )
