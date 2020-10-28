@@ -165,7 +165,7 @@ func TestInitializeAndProcessEventWithNoOutput(t *testing.T) {
 		Type: "zero",
 	}
 
-	testClient, err := messaging.NewMessageClient(testClientConfig)
+	testClient, err := messaging.NewMessageClient(context.TODO(), testClientConfig)
 	require.NoError(t, err, "Unable to create to publisher")
 	assert.False(t, transformWasCalled.Value())
 
@@ -233,7 +233,7 @@ func TestInitializeAndProcessEventWithOutput(t *testing.T) {
 		},
 		Type: "zero",
 	}
-	testClient, err := messaging.NewMessageClient(testClientConfig) //new client to publish & subscribe
+	testClient, err := messaging.NewMessageClient(context.TODO(), testClientConfig) //new client to publish & subscribe
 	require.NoError(t, err, "Failed to create test client")
 
 	testTopics := []types.TopicChannel{{Topic: trigger.Configuration.Binding.PublishTopic, Messages: make(chan types.MessageEnvelope)}}
@@ -330,7 +330,7 @@ func TestInitializeAndProcessCBOREventWithOutput(t *testing.T) {
 		},
 		Type: "zero",
 	}
-	testClient, err := messaging.NewMessageClient(testClientConfig) //new client to publish & subscribe
+	testClient, err := messaging.NewMessageClient(context.TODO(), testClientConfig) //new client to publish & subscribe
 	require.NoError(t, err, "Failed to create test client")
 
 	testTopics := []types.TopicChannel{{Topic: trigger.Configuration.Binding.PublishTopic, Messages: make(chan types.MessageEnvelope)}}
@@ -412,7 +412,7 @@ func TestInitializeAndProcessBackgroundMessage(t *testing.T) {
 		},
 		Type: "zero",
 	}
-	testClient, err := messaging.NewMessageClient(testClientConfig) //new client to publish & subscribe
+	testClient, err := messaging.NewMessageClient(context.TODO(), testClientConfig) //new client to publish & subscribe
 	require.NoError(t, err, "Failed to create test client")
 
 	testTopics := []types.TopicChannel{{Topic: trigger.Configuration.Binding.PublishTopic, Messages: make(chan types.MessageEnvelope)}}

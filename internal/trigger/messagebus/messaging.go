@@ -46,7 +46,7 @@ func (trigger *Trigger) Initialize(appWg *sync.WaitGroup, appCtx context.Context
 
 	logger.Info(fmt.Sprintf("Initializing Message Bus Trigger for '%s'", trigger.Configuration.MessageBus.Type))
 
-	trigger.client, err = messaging.NewMessageClient(trigger.Configuration.MessageBus)
+	trigger.client, err = messaging.NewMessageClient(appCtx, trigger.Configuration.MessageBus)
 	if err != nil {
 		return nil, err
 	}
